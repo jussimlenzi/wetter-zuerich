@@ -15,13 +15,50 @@
 .heroTemp{font-size:clamp(72px,13.3vw,184px)!important;line-height:.82!important;flex:1;display:flex;align-items:center}
 .weatherText,.heroCaption{font-size:clamp(15px,2.05vw,29px)!important;font-weight:900!important;line-height:1.05!important;margin:1.2vh 0 0!important;min-height:1.15em;display:flex;align-items:flex-end;justify-content:center;text-align:center;white-space:nowrap}
 
-/* V3.7: kompaktere Vertikalaufteilung wie in der freigegebenen Vorschau */
-.header{padding-bottom:1.1vh!important}
-.main{padding-top:1.4vh!important;padding-bottom:1.2vh!important}
-.todayHeading{margin-bottom:1.15vh!important}
-.todayGrid{min-height:22vh!important}
-.forecast{margin-top:.6vh!important;padding-top:1.0vh!important}
-.day{padding-top:.25vh!important;padding-bottom:.25vh!important}
+/* V3.8 – kompakte, feste Höhenverhältnisse wie in der freigegebenen Vorschau */
+.page{
+  padding:2.0vh 3vw!important;
+  grid-template-rows:14% 47% 39%!important;
+  gap:0!important;
+}
+header{
+  height:100%!important;
+  padding-bottom:1.0vh!important;
+  align-items:center!important;
+}
+.main{
+  height:100%!important;
+  align-items:stretch!important;
+  padding:1.0vh 0 .7vh!important;
+}
+.nowWrap{
+  height:100%!important;
+  justify-content:flex-start!important;
+}
+.todayHeading{
+  margin:0 0 .7vh!important;
+}
+.todayGrid{
+  flex:1!important;
+  min-height:0!important;
+  height:calc(100% - 4.2vh)!important;
+}
+.details{
+  align-self:center!important;
+}
+.forecast{
+  height:100%!important;
+  margin:0!important;
+  padding-top:.8vh!important;
+  align-items:stretch!important;
+}
+.day{
+  height:100%!important;
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:flex-start!important;
+  padding-top:.35vh!important;
+}
 </style></head><body><div class="page"><header><div class="place">ZÜRICH</div><div class="headerRight"><div class="date" id="date">—</div><div class="updated" id="updated">Stand: —</div></div></header><main class="main"><section class="nowWrap">
   <div class="todayHeading"><span></span><b>HEUTE</b><span></span></div>
   <div class="todayGrid">
