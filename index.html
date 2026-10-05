@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="color-scheme" content="light">
+<title>Wetter Zürich – E-Ink</title>
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;width:100%;height:100%;background:#fff;color:#000}
+  body{font-family:Arial,Helvetica,sans-serif;font-weight:700;overflow:hidden}
+  .page{height:100vh;min-height:320px;padding:2.5vh 3vw;display:grid;grid-template-rows:auto 1fr auto;gap:2vh}
+  header{display:flex;justify-content:space-between;align-items:baseline;border-bottom:3px solid #000;padding-bottom:1.2vh}
+  .place{font-size:clamp(24px,4.2vw,64px);font-weight:900;letter-spacing:.03em}
+  .time{font-size:clamp(14px,2vw,30px);text-align:right}
+  .main{display:grid;grid-template-columns:1.35fr 1fr;gap:3vw;align-items:center}
+  .now{display:grid;grid-template-columns:auto 1fr;gap:2vw;align-items:center}
+  .icon{font-size:clamp(72px,15vw,210px);line-height:.8;font-family:Arial,sans-serif}
+  .temp{font-size:clamp(82px,17vw,230px);font-weight:900;line-height:.75;letter-spacing:-.07em}
+  .condition{font-size:clamp(18px,3vw,44px);margin-top:2vh}
+  .details{border-left:4px solid #000;padding-left:3vw;display:grid;gap:2.5vh;font-size:clamp(18px,3.1vw,44px)}
+  .detail{display:flex;justify-content:space-between;gap:2vw}
+  .detail span:first-child{font-weight:700}
+  .detail strong{font-weight:900;white-space:nowrap}
+  .forecast{border-top:4px solid #000;padding-top:1.5vh;display:grid;grid-template-columns:repeat(4,1fr)}
+  .day{text-align:center;padding:0 1vw;border-right:2px solid #000}
+  .day:last-child{border-right:0}
+  .dow{font-size:clamp(17px,2.7vw,38px);font-weight:900}
+  .dayicon{font-size:clamp(28px,5vw,70px);line-height:1.15;margin:.4vh 0}
+  .range{font-size:clamp(17px,2.8vw,40px);font-weight:900;white-space:nowrap}
+  .rain{font-size:clamp(13px,1.7vw,25px);margin-top:.5vh}
+  #error{display:none;position:fixed;inset:0;background:#fff;padding:8vw;font-size:5vw;z-index:5}
+  @media(max-aspect-ratio:1.35/1){
+    .page{padding:2vh 3vw}
+    .temp{font-size:clamp(70px,15vw,180px)}
+    .icon{font-size:clamp(60px,13vw,160px)}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div class="place">ZÜRICH</div>
+    <div class="time" id="clock">Wetter wird geladen…</div>
+  </header>
+
+  <main class="main">
+    <section class="now">
+      <div class="icon" id="nowIcon">—</div>
+      <div>
+        <div class="temp"><span id="temp">--</span>°</div>
+        <div class="condition" id="condition">Wetter wird geladen</div>
+      </div>
+    </section>
+
+    <section class="details">
+      <div class="detail"><span>Heute</span><strong><span id="min">--</span>° / <span id="max">--</span>°</strong></div>
+      <div class="detail"><span>Regen</span><strong><span id="rain">--</span> %</strong></div>
+      <div class="detail"><span>Wind</span><strong><span id="wind">--</span> km/h</strong></div>
+    </section>
+  </main>
+
+  <section class="forecast" id="forecast"></section>
+</div>
+<div id="error">Wetterdaten konnten nicht geladen werden.<br><br>Bitte Internetverbindung prüfen.</div>
+
+<script>
+/* Zürich: feste Koordinaten, damit das Display keine Standortfreigabe braucht. */
+const LAT = 47.3769, LON = 8.5417;
+
+const weather = code => {
+  if (code === 0) return ["SONNE","Sonnig"];
+  if ([1,2].includes(code)) return ["SONNE","Leicht bewölkt"];
+  if (code === 3) return ["WOLKE","Bewölkt"];
+  if ([45,48].includes(code)) return ["NEBEL","Nebel"];
+  if ([51,53,55,56,57].includes(code)) return ["REGEN","Nieselregen"];
+  if ([61,63,65,66,67,80,81,82].includes(code)) return ["REGEN","Regen"];
+  if ([71,73,75,77,85,86].includes(code)) return ["SCHNEE","Schnee"];
+  if ([95,96,99].includes(code)) return ["GEWITTER","Gewitter"];
+  return ["WOLKE","Wetter"];
+};
+
+/* Textsymbole statt Grafiken: kontrastreich und zuverlässig auf S/W E-Ink. */
+const symbol = kind => ({
+  SONNE:"☀", WOLKE:"☁", NEBEL:"≋", REGEN:"☂", SCHNEE:"✳", GEWITTER:"⚡"
+}[kind] || "●");
+
+const days = ["SO","MO","DI","MI","DO","FR","SA"];
+const round = x => Math.round(Number(x));
+
+function updateClock(){
+  const d = new Date();
+  const date = new Intl.DateTimeFormat("de-CH", {
+    weekday:"short", day:"2-digit", month:"2-digit",
+    hour:"2-digit", minute:"2-digit", timeZone:"Europe/Zurich"
+  }).format(d);
+  document.getElementById("clock").textContent = date;
+}
+
+async function loadWeather(){
+  const params = new URLSearchParams({
+    latitude: LAT,
+    longitude: LON,
+    timezone: "Europe/Zurich",
+    current: "temperature_2m,weather_code,wind_speed_10m",
+    daily: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max",
+    forecast_days: 5
+  });
+
+  const res = await fetch("https://api.open-meteo.com/v1/forecast?" + params);
+  if(!res.ok) throw new Error("API");
+  const d = await res.json();
+
+  const [kind, label] = weather(d.current.weather_code);
+  document.getElementById("nowIcon").textContent = symbol(kind);
+  document.getElementById("temp").textContent = round(d.current.temperature_2m);
+  document.getElementById("condition").textContent = label;
+  document.getElementById("min").textContent = round(d.daily.temperature_2m_min[0]);
+  document.getElementById("max").textContent = round(d.daily.temperature_2m_max[0]);
+  document.getElementById("rain").textContent = round(d.daily.precipitation_probability_max[0]);
+  document.getElementById("wind").textContent = round(d.current.wind_speed_10m);
+
+  const f = document.getElementById("forecast");
+  f.innerHTML = "";
+  for(let i=1; i<5; i++){
+    const date = new Date(d.daily.time[i] + "T12:00:00");
+    const [k] = weather(d.daily.weather_code[i]);
+    const el = document.createElement("div");
+    el.className = "day";
+    el.innerHTML =
+      '<div class="dow">'+days[date.getDay()]+'</div>'+
+      '<div class="dayicon">'+symbol(k)+'</div>'+
+      '<div class="range">'+round(d.daily.temperature_2m_min[i])+'° / '+round(d.daily.temperature_2m_max[i])+'°</div>'+
+      '<div class="rain">Regen '+round(d.daily.precipitation_probability_max[i])+' %</div>';
+    f.appendChild(el);
+  }
+}
+
+updateClock();
+setInterval(updateClock, 60000);
+loadWeather().catch(() => document.getElementById("error").style.display="block");
+/* Neue Daten jede Stunde, falls der Browser dauerhaft offen bleibt. */
+setInterval(() => loadWeather().catch(()=>{}), 60*60*1000);
+</script>
+</body>
+</html>
