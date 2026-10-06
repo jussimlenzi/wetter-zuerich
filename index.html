@@ -138,7 +138,7 @@ async function loadHelsinki(){
   if(!r.ok) throw Error("Helsinki API");
   const d=await r.json();
   document.getElementById("hTemp").textContent=Math.round(d.current.temperature_2m);
-  document.getElementById("hIcon").innerHTML=icon(d.current.weather_code);
+  const hk=weather(d.current.weather_code)[0];document.getElementById("hIcon").innerHTML=symbol(hk);
  }catch(e){
   document.getElementById("hTemp").textContent="--";
   document.getElementById("hIcon").textContent="—";
