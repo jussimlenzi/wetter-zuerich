@@ -66,7 +66,14 @@ header{
   padding-top:0!important;
   padding-bottom:0!important;
 }
-</style></head><body><div class="page"><header><div class="place">ZÜRICH</div><div class="headerRight"><div class="date" id="date">—</div><div class="updated" id="updated">Stand: —</div></div></header><main class="main"><section class="nowWrap">
+
+.cityRow{display:flex;align-items:baseline;gap:2.4vw;min-width:0}
+.helsinki{display:inline-flex;align-items:baseline;gap:.65vw;white-space:nowrap;font-weight:800;line-height:1}
+.hName{font-size:clamp(15px,2.05vw,29px)}
+.hIcon{display:inline-flex;align-items:center;justify-content:center;width:1.25em;height:1em;font-size:clamp(18px,2.45vw,34px);line-height:1;transform:translateY(.08em)}
+.hIcon svg{width:1.15em;height:1.15em;display:block}
+.hTemp{font-size:clamp(18px,2.55vw,36px);font-weight:900}
+</style></head><body><div class="page"><header><div class="cityRow"><div class="place">ZÜRICH</div><div class="helsinki"><span class="hName">Helsinki</span><span class="hIcon" id="hIcon">—</span><span class="hTemp"><span id="hTemp">--</span>°</span></div></div><div class="headerRight"><div class="date" id="date">—</div><div class="updated" id="updated">Stand: —</div></div></header><main class="main"><section class="nowWrap">
   <div class="todayHeading"><span></span><b>HEUTE</b><span></span></div>
   <div class="todayGrid">
     <div class="weatherNow">
@@ -123,4 +130,20 @@ loadWeather().catch(()=>setTimeout(()=>loadWeather().catch(()=>error.style.displ
 loadWaterTemp();
 setInterval(()=>loadWeather().catch(()=>{}),3600000);
 setInterval(loadWaterTemp,3600000);
+
+async function loadHelsinki(){
+ try{
+  const u="https://api.open-meteo.com/v1/forecast?latitude=60.1699&longitude=24.9384&current=temperature_2m,weather_code&timezone=Europe%2FHelsinki";
+  const r=await fetch(u,{cache:"no-store"});
+  if(!r.ok) throw Error("Helsinki API");
+  const d=await r.json();
+  document.getElementById("hTemp").textContent=Math.round(d.current.temperature_2m);
+  document.getElementById("hIcon").innerHTML=icon(d.current.weather_code);
+ }catch(e){
+  document.getElementById("hTemp").textContent="--";
+  document.getElementById("hIcon").textContent="—";
+ }
+}
+loadHelsinki();
+setInterval(loadHelsinki,3600000);
 </script></body></html>
